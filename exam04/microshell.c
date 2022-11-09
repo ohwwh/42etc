@@ -14,9 +14,6 @@ typedef struct s_node
 	int	pipe[2];
 	struct s_node *next_pipe;
 	struct s_node *next;
-	//struct s_node *left;
-	//struct s_node *right;
-	
 } t_node;
 
 char	ft_strlen(char *str)
@@ -71,6 +68,7 @@ void	delete_list(t_node *start)
 		del = start;
 		start = start->next;
 		free(del);
+		del = 0;
 	}
 }
 
@@ -79,7 +77,7 @@ void	delete_whole_list(t_node *init)
 	while (init)
 	{
 		delete_list(init);
-		init = init->next;
+		init = init->next_pipe;
 	}
 }
 
@@ -127,11 +125,11 @@ t_node	*parse_args(char **argv)
 
 	length = 0;
 	init = create_pipe_node();
-	pipe = init;
+	pipe_root = init;
+	pipe = pipe_root;
 	start = argv;
 	while (*argv)
 	{
-		pipe_root = pipe;
 		start = argv;
 		while (1)
 		{
@@ -141,11 +139,10 @@ t_node	*parse_args(char **argv)
 				pipe = pipe->next;
 				if (!*argv || !strcmp(*argv, ";"))
 				{
-					pipe->next = 0;
+					pipe = 0;
 					length = 0;
 					break ;
 				}
-				pipe->next = create_pipe_node();
 				start = argv + 1;
 				length = 0;
 			}
@@ -160,7 +157,7 @@ t_node	*parse_args(char **argv)
 			argv ++;
 		}
 		else
-			pipe->next_pipe = 0;
+			pipe = 0;
 	}
 	return (init);
 }
@@ -180,7 +177,7 @@ void	execute_pipe(t_node *init, char *envp[])
 		{
 			waitpid(pid, 0, 0);
 			former = init;
-			init = init->right;
+			init = init->next; 
 		}
 		else
 		{
@@ -189,14 +186,13 @@ void	execute_pipe(t_node *init, char *envp[])
 				dup2(former->pipe[0], 0);
 				close(former->pipe[0]);
 			}
-			if (init->right)
+			if (init->next)
 			{
-				pipe(init->left->pipe);
-				dup2(init->left->pipe[1], 1);
-				close(init->left->pipe[1]);
+				pipe(init->pipe);
+				dup2(init->pipe[1], 1);
+				close(init->pipe[1]);
 			}
-			printf("%d: pipe?\n", i);
-			if (execve(init->left->args[0], init->left->args, envp) == -1)
+			if (execve(init->args[0], init->args, envp) == -1)
 				printf("%d: pipe!\n", i);
 			exit(0);
 		}
@@ -211,11 +207,11 @@ int main(int argc, char *argv[], char *envp[])
 
 	init = parse_args(&argv[1]);
 	tmp = init;
-	/*while (tmp)
+	while (tmp)
 	{
 		execute_pipe(tmp, envp);
 		tmp = tmp->next_pipe;
-	}*/
+	}
 	delete_whole_list(init);
-	//system("leaks microshell");
+	system("leaks microshell");
 }
