@@ -135,7 +135,8 @@ t_node	*parse_args(char **argv)
 		{
 			if (!*argv || !strcmp(*argv, "|") || !strcmp(*argv, ";"))
 			{
-				pipe->left = create_cmd_node(start, length);
+				if (!pipe->left)
+					pipe->left = create_cmd_node(start, length);
 				if (!*argv || !strcmp(*argv, ";"))
 				{
 					pipe->right = 0;
