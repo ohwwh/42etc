@@ -12,11 +12,9 @@ typedef struct s_node
 	int type;
 	char **args;
 	int	pipe[2];
-	struct s_node *next_pipe;
 	struct s_node *next;
-	//struct s_node *left;
-	//struct s_node *right;
-	
+	struct s_node *left;
+	struct s_node *right;
 } t_node;
 
 char	ft_strlen(char *str)
@@ -60,37 +58,15 @@ void	free_strings(char **str)
 	str = 0;
 }
 
-void	delete_list(t_node *start)
-{
-	t_node	*del;
-
-	while (start)
-	{
-		if (start->type == CMD)
-			free_strings(start->args);
-		del = start;
-		start = start->next;
-		free(del);
-	}
-}
-
-void	delete_whole_list(t_node *init)
-{
-	while (init)
-	{
-		delete_list(init);
-		init = init->next;
-	}
-}
-
 t_node	*create_pipe_node(void)
 {
 	t_node *ret;
 
 	ret = (t_node *)malloc(sizeof(t_node));
 	ret->type = PIPE;
-	ret->next_pipe = 0;
 	ret->next = 0;
+	ret->left = 0;
+	ret->right = 0;
 	ret->args = 0;
 	ret->pipe[0] = 0;
 	ret->pipe[1] = 0;
@@ -105,8 +81,9 @@ t_node	*create_cmd_node(char **args, int length)
 	i = 0;
 	ret = (t_node *)malloc(sizeof(t_node));
 	ret->type = CMD;
-	ret->next_pipe = 0;
 	ret->next = 0;
+	ret->left = 0;
+	ret->right = 0;
 	ret->args = (char **)malloc(sizeof(char *) * (length + 1));
 	while (i < length)
 	{
@@ -117,35 +94,57 @@ t_node	*create_cmd_node(char **args, int length)
 	return (ret);
 }
 
+void	delete_tree(t_node *root)
+{
+	if (!root)
+		return ;
+	delete_tree(root->left);
+	delete_tree(root->right);
+	if (root->type == CMD)
+		free_strings(root->args);
+	free(root);
+	root = 0;
+}
+
+void	delete_whole_trees(t_node *init)
+{
+	while (init)
+	{
+		delete_tree(init);
+		init = init->next;
+	}
+}
+
 t_node	*parse_args(char **argv)
 {
 	int		length;
 	char	**start;
 	t_node	*init;
-	t_node	*pipe_root;
 	t_node	*pipe;
+	t_node	*tmp;
 
 	length = 0;
 	init = create_pipe_node();
-	pipe = init;
+	tmp = init;
 	start = argv;
 	while (*argv)
 	{
-		pipe_root = pipe;
 		start = argv;
+		pipe = tmp;
 		while (1)
 		{
 			if (!*argv || !strcmp(*argv, "|") || !strcmp(*argv, ";"))
 			{
-				pipe->next = create_cmd_node(start, length);
-				pipe = pipe->next;
+				if (!pipe->left)
+					pipe->left = create_cmd_node(start, length);
 				if (!*argv || !strcmp(*argv, ";"))
 				{
-					pipe->next = 0;
+					pipe->right = 0;
 					length = 0;
 					break ;
 				}
-				pipe->next = create_pipe_node();
+				pipe->right = create_pipe_node();
+				pipe = pipe->right;
 				start = argv + 1;
 				length = 0;
 			}
@@ -155,12 +154,12 @@ t_node	*parse_args(char **argv)
 		}
 		if (*argv)
 		{
-			pipe_root->next_pipe = create_pipe_node();
-			pipe = pipe_root->next_pipe;
+			tmp->next = create_pipe_node();
+			tmp = tmp->next;
 			argv ++;
 		}
 		else
-			pipe->next_pipe = 0;
+			tmp->next = 0;
 	}
 	return (init);
 }
@@ -211,11 +210,11 @@ int main(int argc, char *argv[], char *envp[])
 
 	init = parse_args(&argv[1]);
 	tmp = init;
-	/*while (tmp)
+	while (tmp)
 	{
 		execute_pipe(tmp, envp);
-		tmp = tmp->next_pipe;
-	}*/
-	delete_whole_list(init);
+		tmp = tmp->next;
+	}
+	delete_whole_trees(init);
 	//system("leaks microshell");
 }

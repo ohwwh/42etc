@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "${workspaceFolder}/microshell",
+            "program": "${workspaceFolder}/exam04/microshell",
             "args": ["/bin/ls", ";", "/bin/echo", "hi"],
             "cwd": "${workspaceFolder}"
         }
