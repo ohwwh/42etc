@@ -123,6 +123,8 @@ t_node	*parse_args(char **argv)
 	t_node	*pipe_root;
 	t_node	*pipe;
 
+	if (!*argv)
+		return (0);
 	length = 0;
 	init = create_pipe_node();
 	pipe_root = init;
@@ -204,7 +206,9 @@ int main(int argc, char *argv[], char *envp[])
 {
 	t_node	*init;
 	t_node	*tmp;
-
+	
+	if (argc == 1)
+		return (0);
 	init = parse_args(&argv[1]);
 	tmp = init;
 	while (tmp)
@@ -213,5 +217,5 @@ int main(int argc, char *argv[], char *envp[])
 		tmp = tmp->next_pipe;
 	}
 	delete_whole_list(init);
-	system("leaks microshell");
+	//system("leaks microshell");
 }

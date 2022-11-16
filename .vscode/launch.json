@@ -9,7 +9,8 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/exam04/microshell",
-            "args": ["/bin/ls", ";", "/bin/echo", "hi"],
+            //"args": ["/bin/ls", ";", "/bin/echo", "hi"],
+            "args": [],
             "cwd": "${workspaceFolder}"
         }
     ]
