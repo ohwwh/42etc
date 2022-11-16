@@ -112,6 +112,8 @@ t_node	*create_cmd_node(char **args, int length)
 	int		i;
 
 	i = 0;
+	if (!length)
+		return (0);
 	ret = (t_node *)malloc(sizeof(t_node));
 	ret->type = CMD;
 	ret->next_pipe = 0;
@@ -154,6 +156,8 @@ t_node	*parse_args(char **argv)
 				{
 					pipe = 0;
 					length = 0;
+					if (*argv)
+						argv ++;
 					break ;
 				}
 				start = argv + 1;
@@ -167,7 +171,7 @@ t_node	*parse_args(char **argv)
 		{
 			pipe_root->next_pipe = create_pipe_node();
 			pipe = pipe_root->next_pipe;
-			argv ++;
+			pipe_root = pipe_root->next_pipe;
 		}
 		else
 			pipe = 0;
@@ -206,7 +210,7 @@ void	execute_pipe(t_node *init, char *envp[])
 				close(init->pipe[1]);
 			}
 			if (execve(init->args[0], init->args, envp) == -1)
-				printf("%d: pipe!\n", i);
+				exit (-1);
 			exit(0);
 		}
 		i ++;
@@ -236,23 +240,20 @@ microshell.c
 /bin/ls salut
 
 ;
-1: pipe!
 
 ; ;
-1: pipe!
 
 ; ; /bin/echo OK
-1: pipe!
 OK
 
 ; ; /bin/echo OK ;
-1: pipe!
+OK
 
 ; ; /bin/echo OK ; ;
-1: pipe!
+OK
 
 ; ; /bin/echo OK ; ; ; /bin/echo OK
-1: pipe!
+OK
 OK
 
 /bin/ls | /usr/bin/grep microshell
@@ -269,8 +270,22 @@ OK
 
 /bin/echo ftest ; /bin/echo ftewerwerwerst ; /bin/echo werwerwer ; /bin/echo qweqweqweqew ; /bin/echo qwewqeqrtregrfyukui ;
 ftest
+ftewerwerwerst
+werwerwer
+qweqweqweqew
+qwewqeqrtregrfyukui
 
 /bin/ls ftest ; /bin/ls ; /bin/ls werwer ; /bin/ls microshell.c ; /bin/ls subject.fr.txt ;
+leaks.res
+microshell
+microshell.c
+microshell.dSYM
+microshell_ast
+microshell_ast.c
+microshell_ast.dSYM
+out.res
+test.sh
+microshell.c
 
 /bin/ls | /usr/bin/grep micro ; /bin/ls | /usr/bin/grep micro ; /bin/ls | /usr/bin/grep micro ; /bin/ls | /usr/bin/grep micro ;
 
@@ -283,7 +298,6 @@ ftest
 /bin/cat subject.fr.txt ; /bin/cat subject.fr.txt | /usr/bin/grep a | /usr/bin/grep b | /usr/bin/grep z ; /bin/cat subject.fr.txt
 
 ; /bin/cat subject.fr.txt ; /bin/cat subject.fr.txt | /usr/bin/grep a | /usr/bin/grep b | /usr/bin/grep z ; /bin/cat subject.fr.txt
-1: pipe!
 
 blah | /bin/echo OK
 OK

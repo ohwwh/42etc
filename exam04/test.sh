@@ -11,6 +11,7 @@ test_line () {
 		printf "\e[0;31mLEAKS\n\e[0m"
 	fi
 	pid=$( pgrep microshell )
+	echo $pid
 	printf "\e[0;31m"
 	lsof -c microshell | grep $pid | grep -v cwd | grep -v txt | grep -v 0r | grep -v 1w | grep -v 2u | grep microshel
 	printf "\e[0m"

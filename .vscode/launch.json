@@ -10,7 +10,7 @@
             "name": "Debug",
             "program": "${workspaceFolder}/exam04/microshell",
             //"args": ["/bin/ls", ";", "/bin/echo", "hi"],
-            "args": [],
+            "args": ["/bin/ls", "|", "/bin/cat"],
             "cwd": "${workspaceFolder}"
         }
     ]

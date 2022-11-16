@@ -101,6 +101,8 @@ t_node	*create_cmd_node(char **args, int length)
 	int		i;
 
 	i = 0;
+	if (!length)
+		return (0);
 	ret = (t_node *)malloc(sizeof(t_node));
 	ret->type = CMD;
 	ret->next_pipe = 0;
@@ -143,6 +145,8 @@ t_node	*parse_args(char **argv)
 				{
 					pipe = 0;
 					length = 0;
+					if (*argv)
+						argv ++;
 					break ;
 				}
 				start = argv + 1;
@@ -156,7 +160,7 @@ t_node	*parse_args(char **argv)
 		{
 			pipe_root->next_pipe = create_pipe_node();
 			pipe = pipe_root->next_pipe;
-			argv ++;
+			pipe_root = pipe_root->next_pipe;
 		}
 		else
 			pipe = 0;
@@ -174,6 +178,13 @@ void	execute_pipe(t_node *init, char *envp[])
 	former = 0;
 	while (init)
 	{
+		if (init->type == PIPE)
+		{
+			init = init->next;
+			continue ;
+		}
+		if (init->next)
+			pipe(init->pipe);
 		pid = fork();
 		if (pid)
 		{
@@ -190,12 +201,12 @@ void	execute_pipe(t_node *init, char *envp[])
 			}
 			if (init->next)
 			{
-				pipe(init->pipe);
+				//pipe(init->pipe);
 				dup2(init->pipe[1], 1);
 				close(init->pipe[1]);
 			}
 			if (execve(init->args[0], init->args, envp) == -1)
-				printf("%d: pipe!\n", i);
+				exit (-1);
 			exit(0);
 		}
 		i ++;
@@ -219,3 +230,5 @@ int main(int argc, char *argv[], char *envp[])
 	delete_whole_list(init);
 	//system("leaks microshell");
 }
+
+//./microshell /bin/ls "|" /usr/bin/grep micro ";" /bin/ls "|" /usr/bin/grep micro ";" /bin/ls "|" /usr/bin/grep micro ";" /bin/ls "|" /usr/bin/grep micro ";"
