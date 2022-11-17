@@ -3,16 +3,16 @@
 #include <string.h>
 #include <stdio.h>
 
-# define SMCOLON 0
 # define PIPE 1
-# define CMD 2
+# define BREAK 2
+# define END 3
 
 typedef struct s_node
 {
-	int type;
+	int end_type;
 	char **args;
 	int	pipe[2];
-	struct s_node *next_pipe;
+	struct s_node *prev;
 	struct s_node *next;
 } t_node;
 
@@ -63,8 +63,7 @@ void	delete_list(t_node *start)
 
 	while (start)
 	{
-		if (start->type == CMD)
-			free_strings(start->args);
+		free_strings(start->args);
 		del = start;
 		start = start->next;
 		free(del);
@@ -72,98 +71,82 @@ void	delete_list(t_node *start)
 	}
 }
 
-void	delete_whole_list(t_node *init)
-{
-	while (init)
-	{
-		delete_list(init);
-		init = init->next_pipe;
-	}
-}
-
-t_node	*create_pipe_node(void)
-{
-	t_node *ret;
-
-	ret = (t_node *)malloc(sizeof(t_node));
-	ret->type = PIPE;
-	ret->next_pipe = 0;
-	ret->next = 0;
-	ret->args = 0;
-	ret->pipe[0] = 0;
-	ret->pipe[1] = 0;
-	return (ret);
-}
-
-t_node	*create_cmd_node(char **args, int length)
+t_node	*create_cmd_node(char **argv, int size)
 {
 	t_node *ret;
 	int		i;
 
 	i = 0;
-	if (!length)
+	if (!size)
 		return (0);
 	ret = (t_node *)malloc(sizeof(t_node));
-	ret->type = CMD;
-	ret->next_pipe = 0;
 	ret->next = 0;
-	ret->args = (char **)malloc(sizeof(char *) * (length + 1));
-	while (i < length)
+	ret->args = (char **)malloc(sizeof(char *) * (size + 1));
+	while (i < size)
 	{
-		ret->args[i] = ft_strdup(args[i]);
+		ret->args[i] = ft_strdup(argv[i]);
 		i ++;
 	}
 	ret->args[i] = 0;
 	return (ret);
 }
 
+int	check_end(char **argv)
+{
+	if (!*argv)
+		return (END);
+	else if (!strcmp(*argv, "|"))
+		return (PIPE);
+	else
+		return (BREAK);
+}
+
+int	size_args(char **argv)
+{
+	int	ret;
+
+	ret = 0;
+	while (argv[ret] && strcmp(argv[ret], "|") && strcmp(argv[ret], ";"))
+		ret ++;
+	return (ret);
+}
+
 t_node	*parse_args(char **argv)
 {
-	int		length;
-	char	**start;
+	int		size;
 	t_node	*init;
-	t_node	*pipe_root;
-	t_node	*pipe;
+	t_node	*cmd;
+	t_node	*prev;
+	int		first;
 
-	if (!*argv)
-		return (0);
-	length = 0;
-	init = create_pipe_node();
-	pipe_root = init;
-	pipe = pipe_root;
-	start = argv;
+	init = 0;
+	first = 1;
 	while (*argv)
 	{
-		start = argv;
-		while (1)
+		if (**argv == ';')
 		{
-			if (!*argv || !strcmp(*argv, "|") || !strcmp(*argv, ";"))
-			{
-				pipe->next = create_cmd_node(start, length);
-				pipe = pipe->next;
-				if (!*argv || !strcmp(*argv, ";"))
-				{
-					pipe = 0;
-					length = 0;
-					if (*argv)
-						argv ++;
-					break ;
-				}
-				start = argv + 1;
-				length = 0;
-			}
-			else
-				length ++;
 			argv ++;
+			continue ;
 		}
+		size = size_args(argv);
+		cmd = create_cmd_node(argv, size);
+		argv += size;
+		cmd->end_type = check_end(argv);
 		if (*argv)
+			argv ++;
+		if (first == 1)
 		{
-			pipe_root->next_pipe = create_pipe_node();
-			pipe = pipe_root->next_pipe;
-			pipe_root = pipe_root->next_pipe;
+			init = cmd;
+			prev = init;
+			init->prev = 0;
+			first = 0;
 		}
 		else
-			pipe = 0;
+		{
+			prev->next = cmd;
+			cmd->prev = prev;
+			prev = cmd;
+		}
 	}
 	return (init);
 }
@@ -171,63 +154,53 @@ t_node	*parse_args(char **argv)
 void	execute_pipe(t_node *init, char *envp[])
 {
 	pid_t	pid;
-	t_node	*former;
 	int		i;
 
 	i = 0;
-	former = 0;
 	while (init)
 	{
-		if (init->type == PIPE)
-		{
-			init = init->next;
-			continue ;
-		}
-		if (init->next)
+		if (init->end_type == PIPE)
 			pipe(init->pipe);
 		pid = fork();
 		if (pid)
 		{
 			waitpid(pid, 0, 0);
-			former = init;
+			if (init->prev && init->prev->end_type == PIPE)
+				close(init->prev->pipe[0]);
+			if (init->end_type == PIPE)
+				close(init->pipe[1]);
 			init = init->next; 
 		}
 		else
 		{
-			if (former)
+			if (init->prev && init->prev->end_type == PIPE)
 			{
-				dup2(former->pipe[0], 0);
-				close(former->pipe[0]);
+				dup2(init->prev->pipe[0], 0);
+				close(init->prev->pipe[0]);
 			}
-			if (init->next)
+			if (init->end_type == PIPE)
 			{
-				//pipe(init->pipe);
 				dup2(init->pipe[1], 1);
 				close(init->pipe[1]);
 			}
 			if (execve(init->args[0], init->args, envp) == -1)
-				exit (-1);
+				exit(-1);
 			exit(0);
 		}
 		i ++;
 	}
+
 }
 
 int main(int argc, char *argv[], char *envp[])
 {
 	t_node	*init;
-	t_node	*tmp;
 	
 	if (argc == 1)
 		return (0);
 	init = parse_args(&argv[1]);
-	tmp = init;
-	while (tmp)
-	{
-		execute_pipe(tmp, envp);
-		tmp = tmp->next_pipe;
-	}
-	delete_whole_list(init);
+	execute_pipe(init, envp);
+	delete_list(init);
 	//system("leaks microshell");
 }
 
